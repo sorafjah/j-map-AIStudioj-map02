@@ -1,0 +1,5 @@
+{
+  "name": "Japan Tourist Map",
+  "description": "Interactive Japan map using Leaflet.js to explore sightseeing spots and local delicacies of each prefecture.",
+  "requestFramePermissions": []
+}
