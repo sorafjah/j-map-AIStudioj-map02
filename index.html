@@ -1,29 +1,90 @@
-
 <!DOCTYPE html>
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Japan Tourist Map</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    <title>日本観光マップ - 決定版</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
-        .leaflet-container {
-            background-color: #f8fafc;
-        }
+        body { margin: 0; display: flex; flex-direction: column; height: 100vh; font-family: 'Helvetica Neue', Arial, sans-serif; background: #f4f4f4; }
+        @media (min-width: 768px) { body { flex-direction: row; } }
+        #map { flex: 1; height: 60vh; background: #fff; }
+        @media (min-width: 768px) { #map { height: 100vh; } }
+        #info-panel { width: 100%; background: white; padding: 25px; box-shadow: -2px 0 10px rgba(0,0,0,0.1); overflow-y: auto; box-sizing: border-box; }
+        @media (min-width: 768px) { #info-panel { width: 350px; height: 100vh; } }
+        .title { color: #333; border-bottom: 3px solid #a6ce39; padding-bottom: 10px; margin-top: 0; }
+        .section-title { font-weight: bold; color: #555; margin: 20px 0 5px; display: block; border-left: 5px solid #a6ce39; padding-left: 10px; }
+        ul { padding-left: 20px; color: #444; }
+        .btn-group { margin-top: 30px; display: flex; flex-direction: column; gap: 10px; }
+        .btn { display: block; padding: 12px; text-align: center; border-radius: 8px; text-decoration: none; font-weight: bold; transition: 0.3s; }
+        .btn-search { background: #a6ce39; color: white; }
+        .btn-search:hover { background: #c1e16c; }
+        .btn-map { border: 2px solid #a6ce39; color: #a6ce39; }
+        .btn-map:hover { background: #f0f7e6; }
+        .placeholder { text-align: center; color: #999; margin-top: 50px; }
     </style>
-<script type="importmap">
-{
-  "imports": {
-    "react/": "https://esm.sh/react@^19.2.3/",
-    "react": "https://esm.sh/react@^19.2.3",
-    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
-    "leaflet": "https://esm.sh/leaflet@^1.9.4"
-  }
-}
-</script>
 </head>
-<body class="bg-gray-50 h-screen overflow-hidden">
-    <div id="root" class="h-full"></div>
+<body>
+
+<div id="map"></div>
+<div id="info-panel">
+    <div id="content">
+        <div class="placeholder">
+            <h2>🗾 日本地図ガイド</h2>
+            <p>都道府県をクリックして<br>観光情報をチェック！</p>
+        </div>
+    </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+    // 地図の初期化
+    const map = L.map('map').setView([37.5, 137.5], 5);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
+
+    // 観光データ（サンプル）
+    const spotData = {
+        "滋賀県": { spots: ["琵琶湖", "彦根城", "近江八幡"], foods: ["近江牛", "鮒ずし", "赤こんにゃく"] },
+        "三重県": { spots: ["伊勢神宮", "おかげ横丁", "ナガシマスパーランド"], foods: ["松阪牛", "伊勢うどん"] },
+        "東京都": { spots: ["浅草寺", "東京タワー", "東京スカイツリー"], foods: ["もんじゃ焼き", "江戸前寿司"] },
+        "大阪府": { spots: ["道頓堀", "大阪城", "USJ"], foods: ["たこ焼き", "お好み焼き"] },
+        "北海道": { spots: ["小樽運河", "旭山動物園", "函館山"], foods: ["ジンギスカン", "海鮮丼"] }
+    };
+
+    // 外部の正確な日本地図データを読み込み
+    fetch('https://raw.githubusercontent.com/smartcity-iizuka/jp-pref-geojson/master/japan.geojson')
+        .then(response => response.json())
+        .then(data => {
+            L.geoJSON(data, {
+                style: { color: "#ffffff", fillColor: "#a6ce39", fillOpacity: 0.8, weight: 1.5 },
+                onEachFeature: (feature, layer) => {
+                    layer.on('mouseover', () => layer.setStyle({ fillColor: "#c1e16c", fillOpacity: 1 }));
+                    layer.on('mouseout', () => layer.setStyle({ fillColor: "#a6ce39", fillOpacity: 0.8 }));
+                    layer.on('click', () => {
+                        const prefName = feature.properties.name;
+                        const info = spotData[prefName] || { spots: ["観光スポットA", "観光スポットB"], foods: ["名物グルメA", "名物グルメB"] };
+                        
+                        document.getElementById('content').innerHTML = `
+                            <h1 class="title">${prefName}</h1>
+                            <span class="section-title">【名所】</span>
+                            <ul>${info.spots.map(s => `<li>${s}</li>`).join('')}</ul>
+                            <span class="section-title">【グルメ】</span>
+                            <ul>${info.foods.map(f => `<li>${f}</li>`).join('')}</ul>
+                            <div class="btn-group">
+                                <a href="https://www.google.com/search?q=${prefName}+観光+おすすめ" target="_blank" class="btn btn-search">Googleで観光情報を検索</a>
+                                <a href="https://www.google.com/maps/search/${prefName}" target="_blank" class="btn btn-map">Googleマップで場所を確認</a>
+                            </div>
+                        `;
+                    });
+                }
+            }).addTo(map);
+        })
+        .catch(err => {
+            document.getElementById('content').innerHTML = '<p style="color:red">地図の読み込みに失敗しました。</p>';
+        });
+</script>
+
 </body>
 </html>
